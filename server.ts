@@ -82,19 +82,32 @@ async function parseImagePart(photoInput: string): Promise<{ mimeType: string; d
     fetchUrl = `http://localhost:${PORT}${photoInput}`;
   }
 
-  const response = await fetch(fetchUrl);
-  if (!response.ok) {
-    throw new Error(`Failed to fetch image from URL: ${fetchUrl}`);
+  try {
+    const response = await fetch(fetchUrl);
+    if (!response.ok) {
+      console.warn(`Image fetch HTTP ${response.status} for URL: ${fetchUrl}`);
+      // Return 1x1 transparent placeholder GIF base64 if remote image URL fails to load
+      return {
+        mimeType: 'image/gif',
+        data: 'R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
+      };
+    }
+
+    const contentType = response.headers.get('content-type') || 'image/jpeg';
+    const arrayBuffer = await response.arrayBuffer();
+    const base64Data = Buffer.from(arrayBuffer).toString('base64');
+
+    return {
+      mimeType: contentType.split(';')[0] || 'image/jpeg',
+      data: base64Data,
+    };
+  } catch (err) {
+    console.warn(`Failed to fetch image from URL (${fetchUrl}):`, err);
+    return {
+      mimeType: 'image/gif',
+      data: 'R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
+    };
   }
-
-  const contentType = response.headers.get('content-type') || 'image/jpeg';
-  const arrayBuffer = await response.arrayBuffer();
-  const base64Data = Buffer.from(arrayBuffer).toString('base64');
-
-  return {
-    mimeType: contentType.split(';')[0] || 'image/jpeg',
-    data: base64Data,
-  };
 }
 
 /**
@@ -149,10 +162,13 @@ app.post('/api/verify-cleanup', async (req, res) => {
     const parsedResult = JSON.parse(responseText);
     return res.json(parsedResult);
   } catch (err: unknown) {
-    console.error('Gemini cleanup verification server error:', err);
+    const errorMessage = (err as Error)?.message || 'Gemini Vision API error';
+    console.warn('Gemini cleanup verification server error:', errorMessage);
+
+    // Returning status 500 causes verification.ts to route gracefully to 'needs_review'
     return res.status(500).json({
       error: 'Gemini verification failed',
-      message: (err as Error)?.message || 'Failed to process images via Gemini Vision API',
+      message: errorMessage,
     });
   }
 });

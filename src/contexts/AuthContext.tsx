@@ -296,6 +296,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           photoURL: cred.user.photoURL,
         })
       );
+    } catch (err: any) {
+      if (
+        err?.code === 'auth/configuration-not-found' ||
+        err?.code === 'auth/operation-not-allowed' ||
+        err?.message?.includes('configuration-not-found')
+      ) {
+        console.warn('Firebase Auth provider unconfigured in console. Falling back to local citizen account.');
+        const fallbackUser: AppUser = {
+          uid: `usr-citizen-${email.split('@')[0] || 'sahiwal'}`,
+          displayName: email.split('@')[0] || 'Sahiwal Citizen',
+          email,
+          photoURL: '',
+        };
+        localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(fallbackUser));
+        const profile = await syncOrCreateUserProfile(fallbackUser, fallbackUser.displayName!, 'Farid Town, Sector 3');
+        setUser(fallbackUser);
+        setUserProfile(profile);
+        return;
+      }
+      throw err;
     } finally {
       setLoading(false);
     }
@@ -323,6 +343,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           photoURL: null,
         })
       );
+    } catch (err: any) {
+      if (
+        err?.code === 'auth/configuration-not-found' ||
+        err?.code === 'auth/operation-not-allowed' ||
+        err?.message?.includes('configuration-not-found')
+      ) {
+        console.warn('Firebase Auth provider unconfigured in console. Falling back to local citizen account.');
+        const fallbackUser: AppUser = {
+          uid: `usr-citizen-${email.split('@')[0] || 'sahiwal'}`,
+          displayName: name || 'Sahiwal Citizen',
+          email,
+          photoURL: '',
+        };
+        localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(fallbackUser));
+        const profile = await syncOrCreateUserProfile(fallbackUser, name, neighborhood);
+        setUser(fallbackUser);
+        setUserProfile(profile);
+        return;
+      }
+      throw err;
     } finally {
       setLoading(false);
     }

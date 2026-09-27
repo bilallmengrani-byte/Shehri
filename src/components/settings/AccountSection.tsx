@@ -15,8 +15,8 @@ import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from '../../contexts/LanguageContext';
-import { auth, storage } from '../../firebase/config';
-import { ref, uploadString, getDownloadURL } from 'firebase/storage';
+import { auth } from '../../firebase/config';
+import { uploadToCloudinary } from '../../services/cloudinary';
 
 export const AccountSection: React.FC = () => {
   const { user, userProfile, updateProfilePhoto, updateDisplayName, changePassword } = useAuth();
@@ -90,19 +90,17 @@ export const AccountSection: React.FC = () => {
           setPhotoSuccessMsg(true);
           setTimeout(() => setPhotoSuccessMsg(false), 2500);
 
-          // 2. Background Storage Upload
+          // 2. Cloudinary Upload (Direct Unsigned Upload)
           if (user?.uid) {
-            try {
-              const storageRef = ref(storage, `profiles/${user.uid}_${Date.now()}.jpg`);
-              Promise.race([
-                uploadString(storageRef, compressedDataUrl, 'data_url').then(() => getDownloadURL(storageRef)),
-                new Promise<string>((_, reject) => setTimeout(() => reject(new Error('Storage timeout')), 2500))
-              ]).then((downloadUrl) => {
-                if (downloadUrl) {
-                  updateProfilePhoto(downloadUrl);
+            uploadToCloudinary(compressedDataUrl, { folder: 'profiles' })
+              .then((cloudinaryUrl) => {
+                if (cloudinaryUrl && cloudinaryUrl !== compressedDataUrl) {
+                  updateProfilePhoto(cloudinaryUrl);
                 }
-              }).catch(() => {});
-            } catch {}
+              })
+              .catch((err) => {
+                console.warn('Profile photo Cloudinary upload notice:', err);
+              });
           }
         }
       };

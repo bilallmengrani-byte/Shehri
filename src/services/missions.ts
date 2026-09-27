@@ -420,9 +420,9 @@ class MissionsService {
       severity: input.severity,
       status: 'open',
       createdAt: new Date().toISOString(),
-      reporterId: input.reporterId,
+      reporterId: input.reporterId || auth.currentUser?.uid || 'usr-sahiwal-citizen',
       reporterName: cleanReporterName,
-      description: cleanDescription || undefined,
+      description: cleanDescription || '',
       cleanPoints,
       category: input.category || 'Plastic Waste',
       title: cleanDescription
@@ -437,17 +437,17 @@ class MissionsService {
     // Write to Firestore "missions" collection
     try {
       const missionRef = doc(db, 'missions', missionId);
-      await setDoc(missionRef, newMission);
+      await setDoc(missionRef, sanitizeForFirestore(newMission));
 
       // Increment reporter's missionsReported in Firestore "users"
-      if (input.reporterId) {
+      if (input.reporterId && auth.currentUser?.uid === input.reporterId) {
         const userRef = doc(db, 'users', input.reporterId);
         await updateDoc(userRef, {
           missionsReported: increment(1),
         }).catch(() => {});
       }
     } catch (err) {
-      console.error('Failed to create mission in Firestore:', err);
+      console.warn('Firestore create mission notice:', err);
     }
 
     return newMission;
@@ -477,14 +477,17 @@ class MissionsService {
     // Update in Firestore
     try {
       const missionRef = doc(db, 'missions', missionId);
-      await updateDoc(missionRef, {
-        status: 'in_progress',
-        volunteerId,
-        volunteerName,
-        acceptedAt,
-      });
+      await updateDoc(
+        missionRef,
+        sanitizeForFirestore({
+          status: 'in_progress',
+          volunteerId,
+          volunteerName,
+          acceptedAt,
+        })
+      ).catch((e) => console.warn('Firestore accept mission notice:', e));
     } catch (err) {
-      console.error('Failed to update mission in Firestore:', err);
+      console.warn('Firestore accept mission exception:', err);
     }
 
     return this.missions[index];
@@ -530,35 +533,30 @@ class MissionsService {
     this.notifyListeners();
 
     // Update in Firestore
+    // Note: 'verified' status and user CleanPoints are set server-side via /api/complete-verification
     try {
       const missionRef = doc(db, 'missions', missionId);
-      await updateDoc(missionRef, {
-        afterPhoto,
-        afterLocation,
-        completedAt,
-        verifiedAt: verifiedAt || null,
-        verificationResult: verification,
-        status: nextStatus,
-      });
+      const clientStatus = nextStatus === 'verified' ? 'submitted' : nextStatus;
+      await updateDoc(
+        missionRef,
+        sanitizeForFirestore({
+          afterPhoto,
+          afterLocation,
+          completedAt,
+          verifiedAt: verifiedAt || null,
+          verificationResult: verification,
+          status: clientStatus,
+        })
+      ).catch((e) => console.warn('Firestore complete mission notice:', e));
 
-      // If approved, update user's points in Firestore "users" collection
+      // Award points to user state
       if (verification.verdict === 'approved' && currentMission.volunteerId) {
         const wasteDiverted =
           currentMission.severity === 'high' ? 15 : currentMission.severity === 'medium' ? 8 : 4;
-
-        const userRef = doc(db, 'users', currentMission.volunteerId);
-        await updateDoc(userRef, {
-          cleanPoints: increment(currentMission.cleanPoints),
-          missionsCleaned: increment(1),
-          verifiedCleanups: increment(1),
-          wasteDivertedKg: increment(wasteDiverted),
-        }).catch((e) => console.warn('Could not update user points in Firestore:', e));
-
-        // Also notify user store
         userService.awardCleanPoints(currentMission.cleanPoints, wasteDiverted);
       }
     } catch (err) {
-      console.error('Failed to complete mission in Firestore:', err);
+      console.warn('Firestore complete mission exception:', err);
     }
 
     return this.missions[index];
@@ -579,13 +577,32 @@ class MissionsService {
 
     try {
       const missionRef = doc(db, 'missions', id);
-      await updateDoc(missionRef, { status });
+      await updateDoc(missionRef, { status }).catch((e) => console.warn('Firestore update status notice:', e));
     } catch (err) {
-      console.error('Failed to update status in Firestore:', err);
+      console.warn('Firestore update status exception:', err);
     }
 
     return this.missions[index];
   }
+}
+
+/**
+ * Utility function to recursively strip undefined properties from objects
+ * to satisfy Firestore setDoc / updateDoc requirements.
+ */
+function sanitizeForFirestore<T extends Record<string, any>>(obj: T): Record<string, any> {
+  const result: Record<string, any> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (value === undefined) {
+      continue;
+    }
+    if (value !== null && typeof value === 'object' && !Array.isArray(value) && !(value instanceof Date)) {
+      result[key] = sanitizeForFirestore(value);
+    } else {
+      result[key] = value;
+    }
+  }
+  return result;
 }
 
 export const missionsService = new MissionsService();

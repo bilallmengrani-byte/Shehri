@@ -97,6 +97,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
         setError('Password is too weak. Please use at least 6 characters.');
       } else if (code === 'auth/popup-closed-by-user') {
         setError('Google sign-in popup was closed before completion.');
+      } else if (code === 'auth/configuration-not-found' || authError?.message?.includes('configuration-not-found')) {
+        setError('Email sign-in is not enabled in Firebase Console. You can continue as demo user below.');
       } else {
         setError(authError?.message || 'Authentication failed. Please try again.');
       }

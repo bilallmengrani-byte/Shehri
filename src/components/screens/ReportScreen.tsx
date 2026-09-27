@@ -19,6 +19,7 @@ import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { LocationPinPreview } from '../report/LocationPinPreview';
 import { missionsService, calculateCleanPoints, SAHIWAL_DEFAULT_COORDS } from '../../services/missions';
+import { uploadToCloudinary } from '../../services/cloudinary';
 import { estimateSeverityFromPhoto, SeverityEstimationResult } from '../../services/aiEstimator';
 import { CURRENT_USER } from '../../constants/mockData';
 import { useAuth } from '../../contexts/AuthContext';
@@ -138,14 +139,24 @@ export const ReportScreen: React.FC<ReportScreenProps> = ({
     );
   };
 
-  // Process chosen image file
+  // Process chosen image file with type & size validation
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    if (!file.type.startsWith('image/')) {
+      alert('Please select a valid image file (JPEG, PNG, WebP).');
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      alert('Selected image exceeds the maximum allowed size of 10MB.');
+      return;
+    }
+
     setPhotoFilename(file.name);
 
-    // Read as DataURL
+    // Read as DataURL for immediate preview & AI heuristic
     const reader = new FileReader();
     reader.onload = async (event) => {
       const result = event.target?.result as string;
@@ -201,8 +212,12 @@ export const ReportScreen: React.FC<ReportScreenProps> = ({
 
     setIsSubmitting(true);
     try {
+      // 1. Upload photo to Cloudinary (or fallback to data URL if not configured)
+      const uploadedPhotoUrl = await uploadToCloudinary(photoData, { folder: 'missions' });
+
+      // 2. Create mission record in Firestore with Cloudinary photo URL
       const newMission = await missionsService.createMission({
-        photo: photoData,
+        photo: uploadedPhotoUrl,
         location,
         severity,
         category,

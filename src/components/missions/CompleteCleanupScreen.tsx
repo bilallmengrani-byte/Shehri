@@ -23,6 +23,7 @@ import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { verifyCleanup } from '../../services/verification';
 import { missionsService, formatDistance } from '../../services/missions';
+import { uploadToCloudinary } from '../../services/cloudinary';
 import { userService } from '../../services/user';
 import { useTranslation } from '../../contexts/LanguageContext';
 import { 
@@ -135,6 +136,16 @@ export const CompleteCleanupScreen: React.FC<CompleteCleanupScreenProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    if (!file.type.startsWith('image/')) {
+      alert('Please select a valid image file (JPEG, PNG, WebP).');
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      alert('Selected image exceeds the maximum allowed size of 10MB.');
+      return;
+    }
+
     setPhotoFilename(file.name);
     const reader = new FileReader();
     reader.onload = (event) => {
@@ -176,10 +187,13 @@ export const CompleteCleanupScreen: React.FC<CompleteCleanupScreenProps> = ({
     setVerifyStep('Checking waste clearance & public safety index...');
 
     try {
-      // Call isolated verification function
+      // 1. Upload after photo to Cloudinary (if base64 data URL)
+      const uploadedAfterUrl = await uploadToCloudinary(afterPhotoData, { folder: 'cleanups' });
+
+      // 2. Call isolated verification function with uploaded photo URL
       const result = await verifyCleanup(
         mission.photo,
-        afterPhotoData,
+        uploadedAfterUrl,
         mission.location,
         afterLocation,
         {
@@ -190,10 +204,10 @@ export const CompleteCleanupScreen: React.FC<CompleteCleanupScreenProps> = ({
 
       setVerificationResult(result);
 
-      // Update mission in data layer
+      // 3. Update mission in data layer
       const completed = await missionsService.completeMission(
         mission.id,
-        afterPhotoData,
+        uploadedAfterUrl,
         afterLocation,
         result
       );

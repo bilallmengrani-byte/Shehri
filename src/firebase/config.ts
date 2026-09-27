@@ -1,7 +1,6 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
-import { getStorage } from 'firebase/storage';
 
 // Client Firebase configuration from environment or fallback
 const firebaseConfig = {
@@ -39,8 +38,8 @@ export const db = isCustomDb
   ? getFirestore(app, rawDbId)
   : getFirestore(app);
 
-// Initialize Firebase Cloud Storage
-export const storage = getStorage(app);
+// Firebase Cloud Storage is disabled (replaced with Cloudinary for unsigned client uploads)
+// export const storage = getStorage(app);
 
 // Firebase App Check is optional and currently disabled.
 // Uncomment below if you enable App Check with reCAPTCHA v3 in Firebase Console.
