@@ -15,6 +15,12 @@ service cloud.firestore {
       return val is string && val.size() >= minLen && val.size() <= maxLen;
     }
 
+    function isValidCleanPointsForSeverity(data) {
+      return (data.severity == 'low' && data.cleanPoints == 10) ||
+             (data.severity == 'medium' && data.cleanPoints == 25) ||
+             (data.severity == 'high' && data.cleanPoints == 50);
+    }
+
     // =========================================================================
     // 1. Users Collection
     // =========================================================================
@@ -55,7 +61,8 @@ service cloud.firestore {
         && request.resource.data.reporterId == request.auth.uid
         && request.resource.data.status == 'open'
         && isValidString(request.resource.data.title, 1, 200)
-        && isValidString(request.resource.data.description, 1, 1000);
+        && isValidString(request.resource.data.description, 1, 1000)
+        && isValidCleanPointsForSeverity(request.resource.data);
 
       allow update: if isSignedIn() && (
         // Action A: Volunteer claims open mission
@@ -69,6 +76,7 @@ service cloud.firestore {
         (
           resource.data.status == 'in_progress'
           && (request.resource.data.status == 'submitted' || request.resource.data.status == 'needs_review')
+          && request.auth.uid == resource.data.volunteerId
           && request.resource.data.cleanPoints == resource.data.cleanPoints
         ) ||
         // Action C: Original reporter edits open mission details before work starts
