@@ -53,7 +53,7 @@ A Firebase project with Authentication, Firestore, and Storage enabled
 A Gemini API key
 Setup
 bash
-git clone https://github.com/bilallmengrani/shehri-sahiwal-pwa.git
+git clone https://github.com/bilallmengrani-byte/Shehri
 cd shehri-sahiwal-pwa
 npm install
 cp .env.example .env
