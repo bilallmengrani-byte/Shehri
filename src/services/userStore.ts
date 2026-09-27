@@ -26,16 +26,15 @@ import {
   WasteHotspot 
 } from '../types';
 
-// Initial Badges with locked/unlocked concepts
-const INITIAL_BADGES: BadgeItem[] = [
+// Initial Badges with locked/unlocked concepts for new citizens
+export const NEW_USER_BADGES: BadgeItem[] = [
   {
     id: 'b-first-clean',
     name: 'First Cleanup',
     description: 'Complete your first verified cleanup mission in Sahiwal.',
     icon: 'Award',
-    unlocked: true,
-    unlockedAt: 'Sep 2026',
-    progress: { current: 1, total: 1 },
+    unlocked: false,
+    progress: { current: 0, total: 1 },
     category: 'cleanup',
   },
   {
@@ -44,7 +43,7 @@ const INITIAL_BADGES: BadgeItem[] = [
     description: 'Resolve 5 waste incidents validated by civic vision.',
     icon: 'ShieldCheck',
     unlocked: false,
-    progress: { current: 3, total: 5 },
+    progress: { current: 0, total: 5 },
     category: 'cleanup',
   },
   {
@@ -53,7 +52,7 @@ const INITIAL_BADGES: BadgeItem[] = [
     description: 'Amass 1,000+ CleanPoints keeping Sahiwal clean.',
     icon: 'Crown',
     unlocked: false,
-    progress: { current: 850, total: 1000 },
+    progress: { current: 0, total: 1000 },
     category: 'points',
   },
   {
@@ -61,9 +60,8 @@ const INITIAL_BADGES: BadgeItem[] = [
     name: 'Streak: 7 Days',
     description: 'Log in or report civic actions 7 consecutive days.',
     icon: 'Flame',
-    unlocked: true,
-    unlockedAt: 'Sep 2026',
-    progress: { current: 7, total: 7 },
+    unlocked: false,
+    progress: { current: 1, total: 7 },
     category: 'streak',
   },
   {
@@ -71,12 +69,13 @@ const INITIAL_BADGES: BadgeItem[] = [
     name: 'Waste Diverter: 50kg',
     description: 'Safely divert 50 kg of refuse from Sahiwal waterways.',
     icon: 'Scale',
-    unlocked: true,
-    unlockedAt: 'Aug 2026',
-    progress: { current: 64, total: 50 },
+    unlocked: false,
+    progress: { current: 0, total: 50 },
     category: 'cleanup',
   },
 ];
+
+const INITIAL_BADGES = NEW_USER_BADGES;
 
 // Initial mock individual citizens seeded into Firestore
 const INITIAL_CITIZENS: Omit<CitizenRank, 'rank'>[] = [
@@ -238,20 +237,20 @@ export const CHRONIC_HOTSPOTS: WasteHotspot[] = [
 ];
 
 const DEFAULT_USER: UserProfile = {
-  id: 'usr-1042',
-  uid: 'usr-1042',
-  name: 'Hamza Khan',
-  citizenNumber: 'SWL-1042',
-  neighborhood: 'Farid Town, Sector 3',
+  id: '',
+  uid: '',
+  name: 'New Citizen',
+  citizenNumber: 'SWL-0000',
+  neighborhood: 'Farid Town',
   city: 'Sahiwal, Punjab',
-  cleanPoints: 850,
-  rank: 8,
-  missionsReported: 4,
-  missionsCleaned: 3,
-  verifiedCleanups: 3,
-  wasteDivertedKg: 64,
-  streakDays: 7,
-  badges: INITIAL_BADGES,
+  cleanPoints: 0,
+  rank: 1,
+  missionsReported: 0,
+  missionsCleaned: 0,
+  verifiedCleanups: 0,
+  wasteDivertedKg: 0,
+  streakDays: 1,
+  badges: NEW_USER_BADGES,
 };
 
 class GamificationStore {

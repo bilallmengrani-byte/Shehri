@@ -121,15 +121,16 @@ export async function verifyCleanup(
     console.warn('Gemini verification error:', geminiCallError);
   }
 
-  // 5. Fallback rule: If Gemini call fails, times out, or errors, route to needs_review gracefully
+  // 5. Fallback rule: If Gemini call fails, times out, or errors, route to needs_review with explicit API error reason
   if (!geminiResult) {
+    const apiErrorMessage = geminiCallError || 'Verification service connection issue';
     return {
       locationMatch: gpsLocationMatch,
       garbageRemoved: false,
       confidence: 0.5,
       verdict: 'needs_review',
-      reason: 'Verification is taking longer than expected — your submission is under manual review.',
-      feedback: 'Your cleanup submission has been routed to Sahiwal civic moderators for manual confirmation.',
+      reason: `[API Error] ${apiErrorMessage}`,
+      feedback: `Gemini API Call Unsuccessful: ${apiErrorMessage}. Submission has been safely routed to Sahiwal civic moderators for manual confirmation.`,
       metrics: {
         wasteReductionPercentage: 70,
         distanceDeltaMeters: distanceMeters,
@@ -145,14 +146,14 @@ export async function verifyCleanup(
   // If garbage is clearly NOT removed, or location clearly doesn't match (visual or > 300m GPS)
   if (!garbageRemoved || !gpsLocationMatch || (!sameLocationLikely && confidence >= 0.7)) {
     let rejectionReason = reasoning;
-    let rejectionFeedback = 'Remaining waste detected in after-photo. Please clear the site completely and snap a new photo.';
+    let rejectionFeedback = reasoning || 'Remaining waste detected in after-photo. Please clear the site completely and snap a new photo.';
 
     if (!gpsLocationMatch) {
       rejectionReason = `GPS location does not match incident site (detected ${distanceMeters}m away from original spot).`;
       rejectionFeedback = 'Please ensure you are standing at the original Sahiwal location when snapping the after photo.';
     } else if (!sameLocationLikely) {
       rejectionReason = `Visual background does not match original report location. ${reasoning}`;
-      rejectionFeedback = 'The surrounding background or landmarks do not match the original reported location.';
+      rejectionFeedback = `The surrounding background or landmarks do not match the original reported location. (${reasoning})`;
     }
 
     return {
@@ -202,14 +203,14 @@ export async function verifyCleanup(
     };
   }
 
-  // Case C: Needs Review (Ambiguous, low confidence, or mixed signals)
+  // Case C: Needs Review (Genuine Gemini low confidence, lighting, or mixed signals)
   return {
     locationMatch: sameLocationLikely && gpsLocationMatch,
     garbageRemoved,
     confidence,
     verdict: 'needs_review',
     reason: reasoning || 'Image lighting or angle requires human moderator confirmation.',
-    feedback: 'Your cleanup is under review by Sahiwal civic moderators. You will receive points once confirmed.',
+    feedback: `Gemini AI Vision Analysis (${Math.round(confidence * 100)}% confidence): ${reasoning || 'Lighting or angle requires human moderator confirmation.'}`,
     metrics: {
       wasteReductionPercentage: 80,
       distanceDeltaMeters: distanceMeters,

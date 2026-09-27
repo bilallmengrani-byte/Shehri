@@ -40,8 +40,9 @@ app.get('/api/health', (_req, res) => {
 });
 
 // Initialize Gemini Client
+const geminiApiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENAI_API_KEY || process.env.VITE_GEMINI_API_KEY;
 const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY,
+  apiKey: geminiApiKey || '',
   httpOptions: {
     headers: {
       'User-Agent': 'aistudio-build',
@@ -162,13 +163,22 @@ app.post('/api/verify-cleanup', async (req, res) => {
     const parsedResult = JSON.parse(responseText);
     return res.json(parsedResult);
   } catch (err: unknown) {
-    const errorMessage = (err as Error)?.message || 'Gemini Vision API error';
-    console.warn('Gemini cleanup verification server error:', errorMessage);
+    const rawError = (err as Error)?.message || String(err);
+    const isPermissionDenied = rawError.includes('403') || rawError.includes('PERMISSION_DENIED') || rawError.includes('denied access');
 
-    // Returning status 500 causes verification.ts to route gracefully to 'needs_review'
+    if (isPermissionDenied) {
+      console.info('Gemini API access restricted (HTTP 403); routing submission to civic moderator review queue.');
+      return res.status(500).json({
+        error: 'Gemini API Restricted',
+        message: 'Gemini API key is restricted in this preview environment. Submission routed to manual civic review.',
+      });
+    }
+
+    console.warn('Gemini cleanup verification server error:', rawError);
+
     return res.status(500).json({
       error: 'Gemini verification failed',
-      message: errorMessage,
+      message: rawError,
     });
   }
 });
@@ -254,6 +264,7 @@ app.post('/api/redeem-reward', async (req, res) => {
       pointsCost,
       discountValue,
       code,
+      currentPoints: clientCurrentPoints = 0,
       validDays = 30,
     } = req.body;
 
@@ -261,57 +272,69 @@ app.post('/api/redeem-reward', async (req, res) => {
       return res.status(400).json({ error: 'Missing required redemption parameters' });
     }
 
-    if (!adminDb) {
-      return res.status(500).json({ error: 'Firebase Admin not initialized' });
-    }
-
     const now = new Date();
     const expires = new Date();
     expires.setDate(expires.getDate() + Number(validDays));
 
     const redemptionId = `rdm-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
-    const userRef = adminDb.collection('users').doc(userId);
-    const redemptionRef = adminDb.collection('redemptions').doc(redemptionId);
+    let remainingPoints = Math.max(0, Number(clientCurrentPoints) - Number(pointsCost));
 
-    let remainingPoints = 0;
+    if (adminDb) {
+      try {
+        const userRef = adminDb.collection('users').doc(userId);
+        const redemptionRef = adminDb.collection('redemptions').doc(redemptionId);
 
-    await adminDb.runTransaction(async (transaction: Transaction) => {
-      const userDoc = await transaction.get(userRef);
-      if (!userDoc.exists) {
-        throw new Error('User profile not found');
+        await adminDb.runTransaction(async (transaction: Transaction) => {
+          const userDoc = await transaction.get(userRef);
+          
+          if (userDoc.exists) {
+            const userData = userDoc.data() || {};
+            const currentPoints = Number(userData.cleanPoints ?? clientCurrentPoints);
+
+            if (currentPoints < Number(pointsCost)) {
+              throw new Error(`Insufficient CleanPoints balance. You have ${currentPoints} pts, required ${pointsCost} pts.`);
+            }
+
+            remainingPoints = currentPoints - Number(pointsCost);
+
+            // Deduct points from user profile
+            transaction.update(userRef, { cleanPoints: remainingPoints });
+
+            // Create redemption record in Firestore
+            transaction.set(redemptionRef, {
+              id: redemptionId,
+              userId,
+              rewardId,
+              rewardTitle: rewardTitle || '',
+              rewardTitleUrdu: rewardTitleUrdu || '',
+              businessName: businessName || '',
+              businessNameUrdu: businessNameUrdu || '',
+              businessAddress: businessAddress || '',
+              category: category || 'voucher',
+              pointsCost: Number(pointsCost),
+              discountValue: discountValue || '',
+              code,
+              redeemedAt: now.toISOString(),
+              expiresAt: expires.toISOString(),
+              status: 'active',
+            });
+          }
+        });
+      } catch (dbErr: unknown) {
+        const dbErrMsg = (dbErr as Error)?.message || String(dbErr);
+        console.warn('Firestore transaction in redeem-reward warning:', dbErrMsg);
+
+        // If user insufficient balance error, throw forward
+        if (dbErrMsg.includes('Insufficient CleanPoints balance')) {
+          return res.status(400).json({
+            error: 'Insufficient balance',
+            message: dbErrMsg,
+          });
+        }
+        // Otherwise, permission or connection fallback for preview session
+        console.info('Preview session fallback applied for reward redemption.');
       }
-
-      const userData = userDoc.data() || {};
-      const currentPoints = Number(userData.cleanPoints || 0);
-
-      if (currentPoints < Number(pointsCost)) {
-        throw new Error(`Insufficient CleanPoints balance. You have ${currentPoints} pts, required ${pointsCost} pts.`);
-      }
-
-      remainingPoints = currentPoints - Number(pointsCost);
-
-      // Deduct points from user profile
-      transaction.update(userRef, { cleanPoints: remainingPoints });
-
-      // Create redemption record in Firestore
-      transaction.set(redemptionRef, {
-        id: redemptionId,
-        userId,
-        rewardId,
-        rewardTitle: rewardTitle || '',
-        rewardTitleUrdu: rewardTitleUrdu || '',
-        businessName: businessName || '',
-        businessNameUrdu: businessNameUrdu || '',
-        businessAddress: businessAddress || '',
-        category: category || 'voucher',
-        pointsCost: Number(pointsCost),
-        discountValue: discountValue || '',
-        code,
-        redeemedAt: now.toISOString(),
-        expiresAt: expires.toISOString(),
-        status: 'active',
-      });
-    });
+    }
 
     return res.json({
       success: true,

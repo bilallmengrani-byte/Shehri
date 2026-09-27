@@ -14,18 +14,10 @@ interface AppHeaderProps {
 export const AppHeader: React.FC<AppHeaderProps> = ({ activeTab, onNavigate }) => {
   const { user: authUser, userProfile: authProfile } = useAuth();
   const { locale, isRTL, t } = useTranslation();
-  const [profile, setProfile] = useState<UserProfile>(authProfile || userService.getUser());
 
-  useEffect(() => {
-    if (authProfile) {
-      setProfile(authProfile);
-    } else {
-      const unsub = userService.subscribe(setProfile);
-      return () => unsub();
-    }
-  }, [authProfile]);
-
-  const currentPhotoURL = profile.photoURL || authUser?.photoURL;
+  const currentPoints = authProfile?.cleanPoints ?? 0;
+  const currentPhotoURL = authProfile?.photoURL || authUser?.photoURL;
+  const displayName = authProfile?.name || authUser?.displayName || 'Citizen';
 
   return (
     <header className="sticky top-0 z-40 bg-white/95 dark:bg-stone-900/95 backdrop-blur-md border-b border-stone-200/80 dark:border-stone-800 px-4 py-2.5 flex items-center justify-between gap-3 transition-colors">
@@ -53,7 +45,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ activeTab, onNavigate }) =
               title={t('profile.cleanPoints')}
             >
               <Sparkles className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 fill-amber-500 dark:fill-amber-400 shrink-0" />
-              <span className="tabular-nums font-black">{profile.cleanPoints.toLocaleString()}</span>
+              <span className="tabular-nums font-black">{currentPoints.toLocaleString()}</span>
               <span className="text-[10px] text-amber-800 dark:text-amber-300 font-bold opacity-90">
                 {locale === 'ur' ? 'پوائنٹس' : 'pts'}
               </span>
@@ -66,9 +58,9 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ activeTab, onNavigate }) =
               className="w-8 h-8 rounded-full overflow-hidden bg-[#0F5132] dark:bg-emerald-600 text-white font-extrabold text-xs flex items-center justify-center border border-emerald-800 dark:border-emerald-500 ring-2 ring-emerald-900/10 dark:ring-emerald-400/20 hover:ring-emerald-600 active:scale-95 transition cursor-pointer shrink-0 shadow-2xs"
             >
               {currentPhotoURL ? (
-                <img src={currentPhotoURL} alt={profile.name} className="w-full h-full object-cover" />
+                <img src={currentPhotoURL} alt={displayName} className="w-full h-full object-cover" />
               ) : (
-                <span>{(profile.name || 'HK').slice(0, 2).toUpperCase()}</span>
+                <span>{displayName.slice(0, 2).toUpperCase()}</span>
               )}
             </button>
           </>

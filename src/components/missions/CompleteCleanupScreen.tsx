@@ -502,6 +502,8 @@ export const CompleteCleanupScreen: React.FC<CompleteCleanupScreenProps> = ({
   // OUTCOME STATE 3: NEEDS REVIEW
   // =========================================================================
   if (verificationResult?.verdict === 'needs_review') {
+    const isApiError = verificationResult.reason?.includes('[API Error]');
+
     return (
       <div className="p-4 flex-1 flex flex-col gap-4 animate-fade-in">
         {/* Needs Review Hero Card */}
@@ -511,14 +513,16 @@ export const CompleteCleanupScreen: React.FC<CompleteCleanupScreenProps> = ({
           </div>
 
           <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-amber-950 text-amber-200 border border-amber-500/50 inline-block mb-1">
-            Manual Review Required
+            {isApiError ? 'System Fallback Review' : 'AI Review Triggered'}
           </span>
 
           <h2 className="text-xl font-extrabold tracking-tight">
             Submitted for Civic Review
           </h2>
           <p className="text-xs text-amber-100/90 mt-1 max-w-xs mx-auto leading-relaxed">
-            Our automated scanner flagged ambiguous lighting or partial clearance. Sahiwal community moderators will verify it shortly.
+            {isApiError
+              ? 'Verification service encountered an API issue — your submission was safely saved for manual civic review.'
+              : 'Gemini Vision AI flagged low confidence or ambiguous lighting. Sahiwal civic moderators will confirm shortly.'}
           </p>
         </div>
 
@@ -526,7 +530,7 @@ export const CompleteCleanupScreen: React.FC<CompleteCleanupScreenProps> = ({
         <Card variant="default">
           <CardHeader className="mb-2">
             <CardTitle className="text-xs font-bold uppercase tracking-wider text-stone-500">
-              Pending Moderator Decision
+              Moderator Decision Queue
             </CardTitle>
             <span className="px-2.5 py-1 rounded-full bg-amber-100 text-amber-900 text-xs font-bold border border-amber-200">
               In Review
@@ -534,10 +538,22 @@ export const CompleteCleanupScreen: React.FC<CompleteCleanupScreenProps> = ({
           </CardHeader>
 
           <CardContent className="space-y-3 pt-1">
-            <div className="p-3 rounded-2xl bg-amber-50/80 border border-amber-200/80 text-xs text-amber-950">
-              <p className="font-semibold">{verificationResult.reason}</p>
+            {/* Detailed Reasoning / Error Box */}
+            <div className="p-3.5 rounded-2xl bg-amber-50/90 border border-amber-200 text-xs text-amber-950 space-y-2">
+              <div className="font-bold flex items-center gap-1.5 text-amber-900">
+                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                <span>{isApiError ? 'System Diagnostic:' : 'Gemini AI Vision Notes:'}</span>
+              </div>
+              <p className="font-semibold text-stone-800 leading-snug">
+                {verificationResult.reason}
+              </p>
+              {verificationResult.feedback && (
+                <p className="text-[11px] text-stone-600 leading-relaxed pt-1 border-t border-amber-200/60">
+                  {verificationResult.feedback}
+                </p>
+              )}
               <p className="text-[11px] text-stone-600 mt-1">
-                Your mission remains reserved. Once approved by a moderator, your{' '}
+                Your mission reservation is secure. Once confirmed by a civic moderator, your{' '}
                 <strong>+{mission.cleanPoints} CleanPoints</strong> will automatically credit to your wallet.
               </p>
             </div>

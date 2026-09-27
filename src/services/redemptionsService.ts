@@ -47,7 +47,7 @@ export class RedemptionsService {
       if (stored) {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed)) {
-          return parsed.filter((r) => r && (r.userId === userId || r.userId === 'usr-google-bilal' || (typeof r.userId === 'string' && r.userId.startsWith('usr-'))));
+          return parsed.filter((r) => r && r.userId === userId);
         }
       }
     } catch (e) {
@@ -133,6 +133,7 @@ export class RedemptionsService {
           pointsCost: reward.pointsCost,
           discountValue: reward.discountValue,
           code,
+          currentPoints,
           validDays: reward.validDays || 30,
         }),
       });

@@ -24,8 +24,8 @@ import {
   onSnapshot 
 } from 'firebase/firestore';
 import { auth, googleProvider, db } from '../firebase/config';
-import { CURRENT_USER } from '../constants/mockData';
 import { UserProfile } from '../types';
+import { gamificationStore, NEW_USER_BADGES } from '../services/userStore';
 
 export interface AppUser {
   uid: string;
@@ -77,23 +77,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (userSnap.exists()) {
         const data = userSnap.data() as UserProfile;
-        // Merge latest photoURL or displayName if updated
         if (fbUser.photoURL && !data.photoURL) {
           data.photoURL = fbUser.photoURL;
         }
         if (!data.badges || !Array.isArray(data.badges) || data.badges.length === 0) {
-          data.badges = CURRENT_USER.badges;
+          data.badges = NEW_USER_BADGES;
         }
         return data;
       } else {
-        // Create initial citizen record
+        // Create initial clean 0-point citizen profile
         const newProfile: UserProfile = {
           id: fbUser.uid,
           name: customName || fbUser.displayName || 'Sahiwal Citizen',
           email: fbUser.email || '',
           photoURL: fbUser.photoURL || undefined,
-          cleanPoints: 250,
-          rank: 14,
+          cleanPoints: 0,
+          rank: 1,
           neighborhood: customNeighborhood || 'Farid Town, Sahiwal',
           citizenNumber: `SWL-${Math.floor(1000 + Math.random() * 9000)}`,
           missionsReported: 0,
@@ -107,39 +106,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             cleanupVerified: true,
             newMissionNearby: true,
           },
-          badges: CURRENT_USER.badges,
+          badges: NEW_USER_BADGES,
           createdAt: new Date().toISOString(),
         };
 
-        // Fire-and-forget Firestore write with error protection
-        setDoc(userRef, newProfile).catch((err) => {
+        await setDoc(userRef, newProfile).catch((err) => {
           console.warn('Firestore initial user write error:', err);
         });
         return newProfile;
       }
     } catch (error) {
-      console.warn('Error reading user profile from Firestore, using local fallback:', error);
+      console.warn('Error reading user profile from Firestore:', error);
       return {
         id: fbUser.uid,
-        name: customName || fbUser.displayName || CURRENT_USER.name,
-        email: fbUser.email || CURRENT_USER.email,
+        name: customName || fbUser.displayName || 'Sahiwal Citizen',
+        email: fbUser.email || '',
         photoURL: fbUser.photoURL || undefined,
-        cleanPoints: CURRENT_USER.cleanPoints,
-        rank: CURRENT_USER.rank,
-        neighborhood: customNeighborhood || CURRENT_USER.neighborhood,
-        citizenNumber: CURRENT_USER.citizenNumber,
-        missionsReported: CURRENT_USER.missionsReported,
-        missionsCleaned: CURRENT_USER.missionsCleaned,
-        cleanupsCompleted: CURRENT_USER.missionsCleaned,
-        reportsFiled: CURRENT_USER.missionsReported,
-        wasteDivertedKg: CURRENT_USER.wasteDivertedKg,
-        streakDays: CURRENT_USER.streakDays,
+        cleanPoints: 0,
+        rank: 1,
+        neighborhood: customNeighborhood || 'Farid Town, Sahiwal',
+        citizenNumber: `SWL-${Math.floor(1000 + Math.random() * 9000)}`,
+        missionsReported: 0,
+        missionsCleaned: 0,
+        cleanupsCompleted: 0,
+        reportsFiled: 0,
+        wasteDivertedKg: 0,
+        streakDays: 1,
         notifications: {
           missionAccepted: true,
           cleanupVerified: true,
           newMissionNearby: true,
         },
-        badges: CURRENT_USER.badges,
+        badges: NEW_USER_BADGES,
       };
     }
   };
@@ -148,73 +146,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     let isMounted = true;
 
-    // 1. Instant optimistic restore from local storage
+    // 1. Check cached session storage
     try {
       const cached = localStorage.getItem(SESSION_STORAGE_KEY);
       if (cached) {
         const parsed = JSON.parse(cached);
         if (parsed && parsed.uid) {
           setUser(parsed);
-          setUserProfile({
-            id: parsed.uid,
-            name: parsed.displayName || 'Bilal Mengrani',
-            email: parsed.email || 'bilalmengrani6@gmail.com',
-            photoURL: parsed.photoURL || undefined,
-            cleanPoints: 620,
-            rank: 4,
-            neighborhood: 'Canal View Colony, Sahiwal',
-            citizenNumber: 'SWL-8492',
-            missionsReported: 4,
-            missionsCleaned: 6,
-            cleanupsCompleted: 6,
-            reportsFiled: 4,
-            wasteDivertedKg: 42,
-            streakDays: 4,
-            notifications: {
-              missionAccepted: true,
-              cleanupVerified: true,
-              newMissionNearby: true,
-            },
-            badges: CURRENT_USER.badges,
-          });
         }
-      } else {
-        // Default to demo verified citizen (Bilal Mengrani) on initial load for seamless onboarding
-        const defaultCitizen: AppUser = {
-          uid: 'usr-google-bilal',
-          displayName: 'Bilal Mengrani',
-          email: 'bilalmengrani6@gmail.com',
-          photoURL: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=120&auto=format&fit=crop&q=80',
-        };
-        localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(defaultCitizen));
-        setUser(defaultCitizen);
-        setUserProfile({
-          id: defaultCitizen.uid,
-          name: defaultCitizen.displayName!,
-          email: defaultCitizen.email!,
-          photoURL: defaultCitizen.photoURL!,
-          cleanPoints: 620,
-          rank: 4,
-          neighborhood: 'Canal View Colony, Sahiwal',
-          citizenNumber: 'SWL-8492',
-          missionsReported: 4,
-          missionsCleaned: 6,
-          cleanupsCompleted: 6,
-          reportsFiled: 4,
-          wasteDivertedKg: 42,
-          streakDays: 4,
-          notifications: {
-            missionAccepted: true,
-            cleanupVerified: true,
-            newMissionNearby: true,
-          },
-          badges: CURRENT_USER.badges,
-        });
       }
     } catch (e) {
       console.warn('Session load error:', e);
-    } finally {
-      if (isMounted) setLoading(false);
     }
 
     // 2. Listen to live Firebase Auth state
@@ -233,12 +175,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         try {
           const profile = await syncOrCreateUserProfile(appUser);
-          if (isMounted) setUserProfile(profile);
+          if (isMounted) {
+            setUserProfile(profile);
+            gamificationStore.setUserProfile(profile);
+          }
         } catch (err) {
           console.warn('Profile sync error:', err);
         }
+      } else {
+        // Clear session if signed out of Firebase Auth
+        setUser(null);
+        setUserProfile(null);
+        localStorage.removeItem(SESSION_STORAGE_KEY);
       }
-      setLoading(false);
+      if (isMounted) setLoading(false);
     });
 
     return () => {
@@ -247,10 +197,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
-  // Listen to live Firestore user document changes ONLY when actively authenticated with Firebase Auth
+  // Listen to live Firestore user document changes
   useEffect(() => {
-    // Prevent premature snapshot attachment before Firebase Auth resolves
-    if (!auth.currentUser || !user?.uid || auth.currentUser.uid !== user.uid) {
+    if (!user?.uid) {
       return;
     }
 
@@ -261,61 +210,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         (snap) => {
           if (snap.exists()) {
             const data = snap.data() as UserProfile;
-            setUserProfile((prev) => ({
-              ...prev,
-              ...data,
-              badges: (data.badges && Array.isArray(data.badges) && data.badges.length > 0)
-                ? data.badges
-                : prev?.badges || CURRENT_USER.badges,
-            }));
+            setUserProfile(data);
+            gamificationStore.setUserProfile(data);
           }
         },
         (err) => {
-          console.warn('Live user profile snapshot error (offline fallback active):', err);
+          console.warn('Live user profile snapshot error:', err);
         }
       );
       return () => unsubscribeDoc();
     } catch (e) {
       console.warn('Firestore onSnapshot setup warning:', e);
     }
-  }, [user?.uid, auth.currentUser?.uid]);
+  }, [user?.uid]);
 
   const signInWithEmail = async (email: string, pass: string) => {
     setLoading(true);
     try {
       const cred = await signInWithEmailAndPassword(auth, email, pass);
       const profile = await syncOrCreateUserProfile(cred.user);
-      setUser(cred.user);
+      const appUser: AppUser = {
+        uid: cred.user.uid,
+        displayName: cred.user.displayName,
+        email: cred.user.email,
+        photoURL: cred.user.photoURL,
+      };
+      setUser(appUser);
       setUserProfile(profile);
-      localStorage.setItem(
-        SESSION_STORAGE_KEY,
-        JSON.stringify({
-          uid: cred.user.uid,
-          displayName: cred.user.displayName,
-          email: cred.user.email,
-          photoURL: cred.user.photoURL,
-        })
-      );
-    } catch (err: any) {
-      if (
-        err?.code === 'auth/configuration-not-found' ||
-        err?.code === 'auth/operation-not-allowed' ||
-        err?.message?.includes('configuration-not-found')
-      ) {
-        console.warn('Firebase Auth provider unconfigured in console. Falling back to local citizen account.');
-        const fallbackUser: AppUser = {
-          uid: `usr-citizen-${email.split('@')[0] || 'sahiwal'}`,
-          displayName: email.split('@')[0] || 'Sahiwal Citizen',
-          email,
-          photoURL: '',
-        };
-        localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(fallbackUser));
-        const profile = await syncOrCreateUserProfile(fallbackUser, fallbackUser.displayName!, 'Farid Town, Sector 3');
-        setUser(fallbackUser);
-        setUserProfile(profile);
-        return;
-      }
-      throw err;
+      gamificationStore.setUserProfile(profile);
+      localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(appUser));
     } finally {
       setLoading(false);
     }
@@ -332,37 +255,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const cred = await createUserWithEmailAndPassword(auth, email, pass);
       await updateProfile(cred.user, { displayName: name });
       const profile = await syncOrCreateUserProfile(cred.user, name, neighborhood);
-      setUser(cred.user);
+      const appUser: AppUser = {
+        uid: cred.user.uid,
+        displayName: name,
+        email: cred.user.email,
+        photoURL: null,
+      };
+      setUser(appUser);
       setUserProfile(profile);
-      localStorage.setItem(
-        SESSION_STORAGE_KEY,
-        JSON.stringify({
-          uid: cred.user.uid,
-          displayName: name,
-          email: cred.user.email,
-          photoURL: null,
-        })
-      );
-    } catch (err: any) {
-      if (
-        err?.code === 'auth/configuration-not-found' ||
-        err?.code === 'auth/operation-not-allowed' ||
-        err?.message?.includes('configuration-not-found')
-      ) {
-        console.warn('Firebase Auth provider unconfigured in console. Falling back to local citizen account.');
-        const fallbackUser: AppUser = {
-          uid: `usr-citizen-${email.split('@')[0] || 'sahiwal'}`,
-          displayName: name || 'Sahiwal Citizen',
-          email,
-          photoURL: '',
-        };
-        localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(fallbackUser));
-        const profile = await syncOrCreateUserProfile(fallbackUser, name, neighborhood);
-        setUser(fallbackUser);
-        setUserProfile(profile);
-        return;
-      }
-      throw err;
+      gamificationStore.setUserProfile(profile);
+      localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(appUser));
     } finally {
       setLoading(false);
     }
@@ -371,34 +273,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signInWithGoogle = async () => {
     setLoading(true);
     try {
-      try {
-        const cred = await signInWithPopup(auth, googleProvider);
-        const profile = await syncOrCreateUserProfile(cred.user);
-        setUser(cred.user);
-        setUserProfile(profile);
-        localStorage.setItem(
-          SESSION_STORAGE_KEY,
-          JSON.stringify({
-            uid: cred.user.uid,
-            displayName: cred.user.displayName,
-            email: cred.user.email,
-            photoURL: cred.user.photoURL,
-          })
-        );
-      } catch (err: any) {
-        // Fallback for popup-blocker or config-not-found
-        const googleUser: AppUser = {
-          uid: 'usr-google-bilal',
-          displayName: 'Bilal Mengrani',
-          email: 'bilalmengrani6@gmail.com',
-          photoURL: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=120&auto=format&fit=crop&q=80',
-        };
-
-        localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(googleUser));
-        const profile = await syncOrCreateUserProfile(googleUser, 'Bilal Mengrani', 'Canal View Colony');
-        setUser(googleUser);
-        setUserProfile(profile);
-      }
+      const cred = await signInWithPopup(auth, googleProvider);
+      const profile = await syncOrCreateUserProfile(cred.user);
+      const appUser: AppUser = {
+        uid: cred.user.uid,
+        displayName: cred.user.displayName,
+        email: cred.user.email,
+        photoURL: cred.user.photoURL,
+      };
+      setUser(appUser);
+      setUserProfile(profile);
+      gamificationStore.setUserProfile(profile);
+      localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(appUser));
     } finally {
       setLoading(false);
     }
@@ -417,6 +303,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const profile = await syncOrCreateUserProfile(demoUser, name, neighborhood);
       setUser(demoUser);
       setUserProfile(profile);
+      gamificationStore.setUserProfile(profile);
     } finally {
       setLoading(false);
     }

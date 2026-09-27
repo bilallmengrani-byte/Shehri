@@ -16,7 +16,6 @@ import {
   SAHIWAL_DEFAULT_COORDS,
   getSahiwalAnchorLocation
 } from '../../services/missions';
-import { CURRENT_USER } from '../../constants/mockData';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from '../../contexts/LanguageContext';
 import { Mission, TabType } from '../../types';
@@ -34,7 +33,7 @@ export const MissionsScreen: React.FC<MissionsScreenProps> = ({
 }) => {
   const { user } = useAuth();
   const { locale, isRTL, t } = useTranslation();
-  const currentUserId = user?.uid || CURRENT_USER.id;
+  const currentUserId = user?.uid || '';
 
   const [missions, setMissions] = useState<Mission[]>([]);
   const [filter, setFilter] = useState<'all' | 'open' | 'in_progress' | 'mine'>('all');

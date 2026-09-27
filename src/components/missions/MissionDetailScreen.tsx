@@ -17,7 +17,6 @@ import { SahiwalLeafletMap } from '../map/SahiwalLeafletMap';
 import { MissionAcceptedConfirmation } from './MissionAcceptedConfirmation';
 import { CompleteCleanupScreen } from './CompleteCleanupScreen';
 import { missionsService, formatDistance } from '../../services/missions';
-import { CURRENT_USER } from '../../constants/mockData';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from '../../contexts/LanguageContext';
 import { Mission } from '../../types';
@@ -39,8 +38,8 @@ export const MissionDetailScreen: React.FC<MissionDetailScreenProps> = ({
 }) => {
   const { user, userProfile } = useAuth();
   const { locale, isRTL, t } = useTranslation();
-  const currentUserId = user?.uid || CURRENT_USER.id;
-  const currentUserName = userProfile?.name || user?.displayName || 'Hamza Khan (You)';
+  const currentUserId = user?.uid || '';
+  const currentUserName = userProfile?.name || user?.displayName || 'Sahiwal Citizen';
 
   const [mission, setMission] = useState<Mission>(initialMission);
   const [isAccepting, setIsAccepting] = useState(false);

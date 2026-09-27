@@ -18,10 +18,15 @@ import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '../ui/Card
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { LocationPinPreview } from '../report/LocationPinPreview';
-import { missionsService, calculateCleanPoints, SAHIWAL_DEFAULT_COORDS } from '../../services/missions';
+import { 
+  missionsService, 
+  calculateCleanPoints, 
+  SAHIWAL_DEFAULT_COORDS, 
+  SAHIWAL_MAX_RADIUS_KM, 
+  calculateDistanceKm 
+} from '../../services/missions';
 import { uploadToCloudinary } from '../../services/cloudinary';
 import { estimateSeverityFromPhoto, SeverityEstimationResult } from '../../services/aiEstimator';
-import { CURRENT_USER } from '../../constants/mockData';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from '../../contexts/LanguageContext';
 import { 
@@ -205,10 +210,23 @@ export const ReportScreen: React.FC<ReportScreenProps> = ({
     requestGeolocation();
   };
 
+  // Calculate distance from Sahiwal center point
+  const distanceFromSahiwalKm = calculateDistanceKm(
+    location.lat,
+    location.lng,
+    SAHIWAL_DEFAULT_COORDS.lat,
+    SAHIWAL_DEFAULT_COORDS.lng
+  );
+  const isOutsideSahiwal = distanceFromSahiwalKm > SAHIWAL_MAX_RADIUS_KM;
+
   // Handle Form Submit
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!photoData) return;
+
+    if (isOutsideSahiwal) {
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -222,8 +240,8 @@ export const ReportScreen: React.FC<ReportScreenProps> = ({
         severity,
         category,
         description,
-        reporterId: user?.uid || CURRENT_USER.id,
-        reporterName: userProfile?.name || user?.displayName || 'Hamza Khan (You)',
+        reporterId: user?.uid || 'anonymous_citizen',
+        reporterName: userProfile?.name || user?.displayName || 'Sahiwal Citizen',
       });
 
       setCreatedMission(newMission);
@@ -574,6 +592,43 @@ export const ReportScreen: React.FC<ReportScreenProps> = ({
               onResetGps={requestGeolocation}
               isLocating={isLocating}
             />
+
+            {/* Out of Radius Warning Banner */}
+            {isOutsideSahiwal && (
+              <div className="p-3.5 rounded-2xl bg-amber-50 border-2 border-amber-300 text-amber-950 flex flex-col gap-2 animate-fade-in shadow-2xs">
+                <div className="flex items-center gap-2 text-amber-900 font-bold text-xs">
+                  <AlertTriangle className="w-4.5 h-4.5 text-amber-600 shrink-0" />
+                  <span>{t('report.outOfRadiusTitle')}</span>
+                </div>
+                <p className="text-xs text-amber-900/90 leading-relaxed">
+                  {t('report.outOfRadiusMsg')}
+                </p>
+                <div className="text-[11px] font-semibold text-amber-800 bg-amber-100/90 px-2.5 py-1.5 rounded-xl border border-amber-200/80 flex items-center justify-between">
+                  <span>
+                    📍 {locale === 'ur' ? 'ساہیوال سے فاصلہ:' : 'Distance from Sahiwal center:'} {distanceFromSahiwalKm.toFixed(1)} km
+                  </span>
+                  <span className="text-[10px] uppercase tracking-wider font-bold text-amber-700 bg-amber-200/60 px-1.5 py-0.5 rounded-md">
+                    Max: {SAHIWAL_MAX_RADIUS_KM} km
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLocation({
+                      lat: SAHIWAL_DEFAULT_COORDS.lat,
+                      lng: SAHIWAL_DEFAULT_COORDS.lng,
+                      address: SAHIWAL_DEFAULT_COORDS.address,
+                      accuracyMeters: 10,
+                      nudgeOffsetX: 0,
+                      nudgeOffsetY: 0,
+                    });
+                  }}
+                  className="mt-0.5 self-start px-3 py-1.5 rounded-xl bg-amber-800 hover:bg-amber-900 text-white text-xs font-bold transition cursor-pointer active:scale-95 shadow-2xs"
+                >
+                  {locale === 'ur' ? 'مقام ساہیوال پر سیٹ کریں' : 'Reset Pin to Sahiwal Center'}
+                </button>
+              </div>
+            )}
           </div>
         )}
 
@@ -775,14 +830,22 @@ export const ReportScreen: React.FC<ReportScreenProps> = ({
             {/* Submit Action */}
             <div className="pt-1 flex flex-col gap-2">
               <Button
-                variant="primary"
+                variant={isOutsideSahiwal ? 'outline' : 'primary'}
                 size="lg"
                 fullWidth
                 type="submit"
+                disabled={isOutsideSahiwal || isSubmitting}
                 isLoading={isSubmitting}
                 icon={<CheckCircle2 className="w-4 h-4" />}
+                className={
+                  isOutsideSahiwal
+                    ? 'opacity-70 cursor-not-allowed border-amber-300 text-amber-900 bg-amber-50 font-semibold'
+                    : ''
+                }
               >
-                {t('report.submitReport')}
+                {isOutsideSahiwal
+                  ? t('report.outOfRadiusTitle')
+                  : t('report.submitReport')}
               </Button>
               <Button
                 variant="ghost"

@@ -45,7 +45,7 @@ export const RewardsScreen: React.FC<RewardsScreenProps> = ({ onBack }) => {
   const [latestRedemption, setLatestRedemption] = useState<RedemptionRecord | null>(null);
 
   const currentPoints = userProfile?.cleanPoints ?? 0;
-  const userId = user?.uid || 'usr-google-bilal';
+  const userId = user?.uid || '';
 
   const loadUserVouchers = async () => {
     const list = await redemptionsService.getUserRedemptions(userId);

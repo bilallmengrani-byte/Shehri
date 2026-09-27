@@ -44,14 +44,8 @@ export const ProfileScreen: React.FC = () => {
   const { user: authUser, userProfile: authProfile, deductCleanPoints } = useAuth();
   const { locale, isRTL, t } = useTranslation();
 
-  const [user, setUser] = useState<UserProfile>(() => {
-    const base = authProfile || gamificationStore.getUser() || CURRENT_USER;
-    return {
-      ...CURRENT_USER,
-      ...base,
-      badges: base?.badges && base.badges.length > 0 ? base.badges : CURRENT_USER.badges,
-    };
-  });
+  const activeProfile = authProfile || gamificationStore.getUser();
+  const [user, setUser] = useState<UserProfile>(activeProfile);
   const [profileTab, setProfileTab] = useState<'rewards' | 'impact'>('rewards');
   const [rewardsSubTab, setRewardsSubTab] = useState<'catalog' | 'vouchers'>('catalog');
   const [selectedCategory, setSelectedCategory] = useState<RewardCategory>('all');
@@ -65,38 +59,22 @@ export const ProfileScreen: React.FC = () => {
   const [rewardToRedeem, setRewardToRedeem] = useState<RewardItem | null>(null);
   const [latestRedemption, setLatestRedemption] = useState<RedemptionRecord | null>(null);
 
-  const userId = authUser?.uid || user.uid || user.id || 'usr-google-bilal';
-  const currentPoints = user.cleanPoints ?? authProfile?.cleanPoints ?? 0;
-  const userBadges: BadgeItem[] = (user.badges && Array.isArray(user.badges) && user.badges.length > 0)
-    ? user.badges
-    : (CURRENT_USER.badges || []);
+  const userId = authUser?.uid || user.uid || user.id;
+  const currentPoints = user.cleanPoints ?? 0;
+  const userBadges: BadgeItem[] = user.badges || [];
 
   useEffect(() => {
     if (authProfile) {
-      setUser((prev) => ({
-        ...prev,
-        ...authProfile,
-        badges: authProfile.badges && Array.isArray(authProfile.badges) && authProfile.badges.length > 0 
-          ? authProfile.badges 
-          : prev.badges && Array.isArray(prev.badges) && prev.badges.length > 0 
-            ? prev.badges 
-            : CURRENT_USER.badges,
-      }));
+      setUser(authProfile);
     }
   }, [authProfile]);
 
   useEffect(() => {
     const unsub = gamificationStore.subscribe(() => {
       const stored = gamificationStore.getUser();
-      setUser((prev) => ({
-        ...prev,
-        ...stored,
-        badges: stored.badges && Array.isArray(stored.badges) && stored.badges.length > 0 
-          ? stored.badges 
-          : prev.badges && Array.isArray(prev.badges) && prev.badges.length > 0
-            ? prev.badges
-            : CURRENT_USER.badges,
-      }));
+      if (stored && stored.id) {
+        setUser(stored);
+      }
     });
     return () => unsub();
   }, []);

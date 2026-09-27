@@ -169,6 +169,8 @@
     "descriptionPlaceholder": "Describe the waste issue, estimated size, accessibility obstacles...",
     "submitReport": "Submit Report & Earn CleanPoints",
     "submitting": "Submitting Civic Report...",
+    "outOfRadiusTitle": "Report Outside Sahiwal Coverage Area",
+    "outOfRadiusMsg": "Shehri currently supports reports within Sahiwal only — we're starting local before expanding.",
     "reportSuccess": "Civic Report Submitted!",
     "reportSuccessMsg": "Your report is now live on the Sahiwal civic radar. Thank you for keeping Sahiwal clean!",
     "viewOnMapBtn": "View on Map",
