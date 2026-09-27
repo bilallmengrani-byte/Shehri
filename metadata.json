@@ -1,0 +1,6 @@
+{
+  "name": "Shehri — Sahiwal Community Cleanup",
+  "description": "Mobile-first community cleanup and civic action PWA for Sahiwal, Pakistan. Report waste, join cleanup missions, and earn CleanPoints.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

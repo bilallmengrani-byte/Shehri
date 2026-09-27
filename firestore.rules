@@ -1,0 +1,103 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Helper Functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidString(val, minLen, maxLen) {
+      return val is string && val.size() >= minLen && val.size() <= maxLen;
+    }
+
+    // =========================================================================
+    // 1. Users Collection
+    // =========================================================================
+    // - Signed in users can read public citizen profile info for leaderboard
+    // - Users can create their own doc during sign-up if cleanPoints starts at 0 or is unchanged
+    // - Users CANNOT update cleanPoints, rank, cleanupsCompleted, or stats directly
+    //   (cleanPoints/stats must be updated by verified server actions)
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      
+      allow create: if isOwner(userId)
+        && request.resource.data.id == userId
+        && isValidString(request.resource.data.name, 1, 100)
+        && (!('cleanPoints' in request.resource.data) || request.resource.data.cleanPoints == 0);
+
+      allow update: if isOwner(userId)
+        && (!('cleanPoints' in request.resource.data) || request.resource.data.cleanPoints == resource.data.cleanPoints)
+        && (!('cleanupsCompleted' in request.resource.data) || request.resource.data.cleanupsCompleted == resource.data.cleanupsCompleted)
+        && (!('reportsFiled' in request.resource.data) || request.resource.data.reportsFiled == resource.data.reportsFiled)
+        && (!('wasteDivertedKg' in request.resource.data) || request.resource.data.wasteDivertedKg == resource.data.wasteDivertedKg)
+        && (!('rank' in request.resource.data) || request.resource.data.rank == resource.data.rank);
+
+      allow delete: if false;
+    }
+
+    // =========================================================================
+    // 2. Missions Collection
+    // =========================================================================
+    // - Citizens can read all missions
+    // - Citizens can create a new report where status == 'open' and reporterId matches
+    // - Volunteers can claim an open mission ('open' -> 'in_progress')
+    // - Volunteers can submit cleanup photo ('in_progress' -> 'submitted' or 'needs_review')
+    // - Setting status to 'verified' and awarding points is FORBIDDEN for client writes (Server only)
+    match /missions/{missionId} {
+      allow read: if isSignedIn();
+
+      allow create: if isSignedIn()
+        && request.resource.data.reporterId == request.auth.uid
+        && request.resource.data.status == 'open'
+        && isValidString(request.resource.data.title, 1, 200)
+        && isValidString(request.resource.data.description, 1, 1000);
+
+      allow update: if isSignedIn() && (
+        // Action A: Volunteer claims open mission
+        (
+          resource.data.status == 'open'
+          && request.resource.data.status == 'in_progress'
+          && request.resource.data.volunteerId == request.auth.uid
+          && request.resource.data.cleanPoints == resource.data.cleanPoints
+        ) ||
+        // Action B: Volunteer submits cleanup evidence photo for review
+        (
+          resource.data.status == 'in_progress'
+          && (request.resource.data.status == 'submitted' || request.resource.data.status == 'needs_review')
+          && request.resource.data.cleanPoints == resource.data.cleanPoints
+        ) ||
+        // Action C: Original reporter edits open mission details before work starts
+        (
+          resource.data.reporterId == request.auth.uid
+          && resource.data.status == 'open'
+          && request.resource.data.status == 'open'
+          && request.resource.data.cleanPoints == resource.data.cleanPoints
+        )
+      );
+
+      allow delete: if isSignedIn()
+        && resource.data.reporterId == request.auth.uid
+        && resource.data.status == 'open';
+    }
+
+    // =========================================================================
+    // 3. Redemptions Collection
+    // =========================================================================
+    // - Voucher records can be read by their owner
+    // - Creating and managing redemptions is handled strictly by server-side API
+    match /redemptions/{redemptionId} {
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow write: if false; // Server Admin SDK handles point deduction and voucher issue
+    }
+
+    // Default Deny Catch-All
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

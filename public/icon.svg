@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <!-- Deep Green Civic Background Gradient -->
+    <linearGradient id="pwaBgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#14663F" />
+      <stop offset="60%" stop-color="#0F5132" />
+      <stop offset="100%" stop-color="#0A3822" />
+    </linearGradient>
+
+    <!-- Emerald Leaf Renewal Gradient -->
+    <linearGradient id="pwaLeafGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4ADE80" />
+      <stop offset="100%" stop-color="#16A34A" />
+    </linearGradient>
+
+    <!-- Radiant Amber Civic Action Gradient -->
+    <linearGradient id="pwaAmberGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FCD34D" />
+      <stop offset="50%" stop-color="#F59E0B" />
+      <stop offset="100%" stop-color="#D97706" />
+    </linearGradient>
+
+    <!-- Ambient Shadow Filter -->
+    <filter id="pwaShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#000000" flood-opacity="0.32" />
+    </filter>
+  </defs>
+
+  <!-- Base Rounded Container (512x512) -->
+  <rect width="512" height="512" rx="128" fill="url(#pwaBgGrad)" />
+
+  <!-- Subtle Concentric Civic Orbit Rings -->
+  <circle cx="256" cy="256" r="220" fill="none" stroke="#ffffff" stroke-width="2" stroke-opacity="0.08" />
+  <circle cx="256" cy="256" r="180" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-opacity="0.12" />
+  
+  <!-- Subtle Inner Border -->
+  <rect x="20" y="20" width="472" height="472" rx="108" fill="none" stroke="#ffffff" stroke-width="4" stroke-opacity="0.15" />
+
+  <!-- Main Shehri Civic Icon Mark (Scaled up from 100x100 to 512x512 space) -->
+  <g transform="translate(76, 76) scale(3.6)" filter="url(#pwaShadow)">
+    <!-- Left Leaf / Pin Half (Pure Crisp White) -->
+    <path
+      d="M 50 16 C 31 16 19 32 19 50 C 19 67 36 78 50 85 C 47.5 68 46 45 50 16 Z"
+      fill="#FFFFFF"
+      fill-opacity="0.96"
+    />
+
+    <!-- Right Leaf Half (Fresh Emerald Renewal) -->
+    <path
+      d="M 50 16 C 46 45 47.5 68 50 85 C 64 78 81 67 81 50 C 81 32 69 16 50 16 Z"
+      fill="url(#pwaLeafGrad)"
+    />
+
+    <!-- Center Leaf Rib / Civic Division -->
+    <path
+      d="M 50 20 L 50 80"
+      stroke="#0F5132"
+      stroke-width="2.2"
+      stroke-linecap="round"
+      stroke-opacity="0.35"
+    />
+
+    <!-- Radiant Amber Civic Action Checkmark -->
+    <path
+      d="M 33 53 L 45 65 L 70 36"
+      stroke="url(#pwaAmberGrad)"
+      stroke-width="7"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+
+    <!-- 4-point Civic Spark / Cleanliness Star at tip -->
+    <path
+      d="M 72 20 Q 72 27 79 27 Q 72 27 72 34 Q 72 27 65 27 Q 72 27 72 20 Z"
+      fill="#FDE047"
+    />
+
+    <!-- Secondary subtle civic sparkle dot -->
+    <circle cx="28" cy="40" r="2.2" fill="#FCD34D" fill-opacity="0.9" />
+  </g>
+</svg>

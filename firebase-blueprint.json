@@ -1,0 +1,74 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Registered citizen profile containing points, ranking, and activity stats",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "cleanPoints": { "type": "number" },
+        "rank": { "type": "number" },
+        "neighborhood": { "type": "string" },
+        "citizenNumber": { "type": "string" },
+        "cleanupsCompleted": { "type": "number" },
+        "reportsFiled": { "type": "number" },
+        "wasteDivertedKg": { "type": "number" },
+        "streakDays": { "type": "number" }
+      },
+      "required": ["id", "name", "cleanPoints"]
+    },
+    "Mission": {
+      "title": "Mission",
+      "description": "Civic waste cleanup mission reported by citizens or municipal authorities",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "photo": { "type": "string" },
+        "cleanPhoto": { "type": "string" },
+        "status": { "type": "string", "enum": ["open", "in_progress", "cleaned", "verified"] },
+        "severity": { "type": "string", "enum": ["low", "medium", "high"] },
+        "cleanPoints": { "type": "number" },
+        "reporterId": { "type": "string" },
+        "volunteerId": { "type": "string" }
+      },
+      "required": ["id", "title", "status", "cleanPoints", "reporterId"]
+    },
+    "RedemptionRecord": {
+      "title": "RedemptionRecord",
+      "description": "CleanPoints voucher redemption record for local Sahiwal business reward",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "rewardId": { "type": "string" },
+        "rewardTitle": { "type": "string" },
+        "businessName": { "type": "string" },
+        "pointsCost": { "type": "number" },
+        "code": { "type": "string" },
+        "redeemedAt": { "type": "string" },
+        "expiresAt": { "type": "string" },
+        "status": { "type": "string", "enum": ["active", "claimed", "expired"] }
+      },
+      "required": ["id", "userId", "rewardId", "pointsCost", "code", "status"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "Citizen profiles and statistics"
+    },
+    "/missions/{missionId}": {
+      "schema": "Mission",
+      "description": "Civic cleanup missions"
+    },
+    "/redemptions/{redemptionId}": {
+      "schema": "RedemptionRecord",
+      "description": "Citizen CleanPoints voucher redemptions"
+    }
+  }
+}
